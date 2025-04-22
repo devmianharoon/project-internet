@@ -8,7 +8,8 @@ from typing import AsyncGenerator
 from pydantic import BaseModel
 from typing import List, Dict, AsyncGenerator
 from uuid import uuid4
-
+from app.config_gemni import model_gemini, config
+from app.zip_code_finder import zip_code_finder_agent 
 
 app : FastAPI = FastAPI(
     title="Zipi AI",
@@ -107,3 +108,20 @@ async def process_message(message: Message) -> StreamingResponse:
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
+
+class Coordinates(BaseModel):
+    lat: float
+    lon: float
+# coords: Coordinates
+@app.post("/coordinates")
+async def get_coordinates(Coordinates: Coordinates):
+    result = await Runner.run(
+         zip_code_finder_agent,
+        [{"role":"user" , "content" : f"my pin location is {Coordinates.lat}, {Coordinates.lon}"}],
+        run_config=config,
+
+        )
+    # print(result.final_output.zip_code)
+    
+    return result.final_output
