@@ -86,6 +86,7 @@ async def process_message(message: Message) -> StreamingResponse:
             response_content = ""
             # Run the agent with streaming
             result = Runner.run_streamed(front_desk_agent, input=history)
+            print("result", result)
             
             # Stream response chunks
             async for event in result.stream_events():
@@ -125,3 +126,6 @@ async def get_coordinates(Coordinates: Coordinates):
     # print(result.final_output.zip_code)
     
     return result.final_output
+
+
+# uv run uvicorn app.main:app --reload
