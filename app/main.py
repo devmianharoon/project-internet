@@ -19,6 +19,7 @@ app : FastAPI = FastAPI(
 origins = [
     "http://localhost:3000",
     "https://your-production-domain.com",
+    "https://gen-002.asdev.tech"
 ]
 app.add_middleware(
     CORSMiddleware,

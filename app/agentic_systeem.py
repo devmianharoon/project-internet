@@ -13,7 +13,7 @@ set_default_openai_key(os.getenv('OPENAI_API_KEY'))
 search_agent = Agent(
     name="Web Search Agent",
     instructions=instructions,
-    tools=[WebSearchTool(),get_providers],
+    tools=[WebSearchTool()],
 )
 front_desk_agent = Agent(
     name="Internat Packages Provider",
@@ -21,7 +21,7 @@ front_desk_agent = Agent(
     handoffs=[search_agent],
     handoff_description="Search the web for information about internet packages.",
     model="gpt-4",
-    tools=[get_providers],
+    # tools=[get_providers],
 
 )
 # prompt = """
