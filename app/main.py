@@ -10,11 +10,16 @@ from typing import List, Dict, AsyncGenerator
 from uuid import uuid4
 from app.config_gemni import model_gemini, config
 from app.zip_code_finder import zip_code_finder_agent 
+from app.testing_systeem import front_desk_agent_updated
+import json
+from fastapi.responses import JSONResponse
+
+
 
 app : FastAPI = FastAPI(
     title="Zipi AI",
     description="A friendly assistant to help you find internet providers in your area.",
-    version="1.0.0",
+    version="1.0.2",
 )
 origins = [
     "http://localhost:3000",
@@ -128,5 +133,18 @@ async def get_coordinates(Coordinates: Coordinates):
     
     return result.final_output
 
+@app.post("/providers")
+async def get_providers(content: str):
+    # print("content", content)
+    try:
+        result = await Runner.run(
+            front_desk_agent_updated,
+            [{"role": "user", "content": content}],
+        )
+        data = json.loads(result.final_output)  # Parse the JSON string
+        return JSONResponse(content=data)       # Return valid JSON
 
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 # uv run uvicorn app.main:app --reload

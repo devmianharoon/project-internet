@@ -43,6 +43,7 @@ def get_providers(provider_names: List[str]) -> List[Dict[str, str]]:
         # Close the cursor and connection
         cursor.close()
         conn.close()
+        # print(providers)
 
         return providers
 
