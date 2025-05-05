@@ -9,17 +9,19 @@ from pydantic import BaseModel
 from typing import List, Dict, AsyncGenerator
 from uuid import uuid4
 from app.config_gemni import model_gemini, config
+from app.model import ZipData
 from app.zip_code_finder import zip_code_finder_agent 
 from app.testing_systeem import front_desk_agent_updated
 import json
 from fastapi.responses import JSONResponse
+import pymysql
 
 
 
 app : FastAPI = FastAPI(
     title="Zipi AI",
     description="A friendly assistant to help you find internet providers in your area.",
-    version="1.0.2",
+    version="1.0.3",
 )
 origins = [
     "http://localhost:3000",
@@ -33,6 +35,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+DB_CONFIG = {
+    "host": "localhost",
+    "user": "nearme_us",
+    "password": "nearme&j417Btt5",
+    "database": "internet_nrearme",
+    "charset": "utf8mb4",
+    "cursorclass": pymysql.cursors.DictCursor
+}
 
 @app.get("/")
 def read_root():
@@ -148,3 +158,70 @@ async def get_providers(content: str):
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 # uv run uvicorn app.main:app --reload
+
+
+
+
+# Function to get database connection
+def get_db_connection():
+    return pymysql.connect(**DB_CONFIG)
+
+@app.get("/zip/{zip_code}", response_model=List[ZipData])
+async def get_zip_data(zip_code: str):
+    # Validate ZIP code (basic check for 5 digits)
+    if not zip_code.isdigit() or len(zip_code) != 5:
+        raise HTTPException(status_code=400, detail="ZIP code must be a 5-digit number")
+    
+    try:
+        # Connect to the database
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # Query to fetch data for the given ZIP code
+            sql = "SELECT * FROM us_zip WHERE zip = %s"
+            cursor.execute(sql, (zip_code,))
+            result = cursor.fetchall()
+        
+        # Check if data was found
+        if not result:
+            raise HTTPException(status_code=404, detail=f"No data found for ZIP code {zip_code}")
+        
+        # Convert result to list of ZipData objects
+        return [ZipData(**item) for item in result]
+    
+    except pymysql.MySQLError as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    finally:
+        connection.close()
+
+
+
+@app.get("/providers/by_zip/{zip_code}")
+async def get_providers_by_zip(zip_code: str):
+    # Validate ZIP code (basic check for 5 digits)
+    if not zip_code.isdigit() or len(zip_code) != 5:
+        raise HTTPException(status_code=400, detail="ZIP code must be a 5-digit number")
+    
+    try:
+        # Connect to the database
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            # Query to fetch providers for the given ZIP code
+            sql = "SELECT providers FROM by_zip WHERE zip = %s"
+            cursor.execute(sql, (zip_code,))
+            result = cursor.fetchone()
+        
+        # Check if data was found
+        if not result:
+            raise HTTPException(status_code=404, detail=f"No providers found for ZIP code {zip_code}")
+        
+        # Parse the providers JSON string into a Python dict
+        providers_data = json.loads(result['providers'])
+        return providers_data
+    
+    except pymysql.MySQLError as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Invalid providers data format")
+    finally:
+        connection.close()
